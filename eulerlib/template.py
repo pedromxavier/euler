@@ -2,14 +2,12 @@ TEMPLATE = """
 ''' Project Euler {:03d}
     ====================
 '''
-import eulerlib as lib
-
-N = 0
+import lib
 
 @lib.answer
-def main(n: int):
+def main():
     ...
 
 if __name__ == '__main__':
-    main(N)
+    main()
 """

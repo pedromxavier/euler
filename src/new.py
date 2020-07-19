@@ -1,5 +1,5 @@
 if __name__ == '__main__':
-    from lib import _new
+    from eulerlib import _new
     from sys import argv
 
     if len(argv) == 1:

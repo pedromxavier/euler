@@ -1,10 +1,8 @@
 import math
 import os
 
-try:
-    from ..search import binary_search
-except ModuleNotFoundError:
-    from search import binary_search
+
+from search import binary_search
 
 class Sieve:
 
@@ -34,6 +32,7 @@ class Sieve:
     def prime_range(start: int, stop: int):
         """ primes in 30 n ± 1, 30 n ± 7, 30 n ± 11, 30 n ± 13
         """
+        if start <= 15:
         for n in range((start + 13) // 30, stop):
             for m in (1, 7, 11, 13):
                 yield 30 * n - m
@@ -55,7 +54,7 @@ class Sieve:
         return nbytes
 
     def __iter__(self):
-        for log in range(self.bytelog(self.limit)):
+        for log in range(self.bytelog(self.limit, math.ceil)):
             yield from self.prime[log]
 
     def __contains__(self, x: int):
@@ -68,9 +67,10 @@ class Sieve:
         return binary_search(x, self.prime[self.bytelog(x)]) is not None
 
     def _set_limit(self, x: int):
+        if x > self._LIMIT: raise OverflowError(f"{x} is above operational limit {self._LIMIT}.")
         self.save_sieve()
         self.save_prime()
-        self.limit = max(256, min(self._LIMIT, x))
+        self.limit = max(256, x)
         self.sieve = self.load_sieve(self.limit)
         self.prime = self.load_prime(self.sieve, self.limit)
 
@@ -94,11 +94,11 @@ class Sieve:
             with open(fname, 'rb') as file:
                 sieve = cls.decode_bool(file.read())
             last_true = cls._last_true(sieve)
-            sieve = sieve + [False] * max(limit - len(sieve), 0)
+            sieve = sieve + [True] * max(limit - len(sieve), 0)
         else:
             last_true = 256
-            sieve = cls._SIEVE + [False] * max(limit - 256, 0)
-        cls.run_sieve(sieve, last_true, cls._next_byte(max(limit, last_true)))
+            sieve = cls._SIEVE + [True] * max(limit - 256, 0)
+        sieve = cls.run_sieve(sieve, last_true, cls._next_byte(max(limit, last_true)))
         return sieve
         
     @classmethod
@@ -124,8 +124,12 @@ class Sieve:
         for i in range(max(5, start), test_limit):			
             if sieve[i]:
                 k = i * i
-                for j in range(k, limit+1, k):
-                    sieve[j] = False
+                for j in range(k, limit, k):
+                    try:
+                        sieve[j] = False
+                    except:
+                        print(len(sieve), limit)
+                        raise
         return sieve
 
     @classmethod
@@ -134,8 +138,8 @@ class Sieve:
             return [cls._PRIME]
 
         prime_array = []
-        for log in range(cls.bytelog(limit)):
-            fname = f"{fname}-{log}.dat"
+        for log in range(cls.bytelog(limit, math.ceil)):
+            fname = f"{cls.fname}-{log}.dat"
             if os.path.exists(fname):
                 with open(fname, 'rb') as file:
                     array = file.read()
@@ -146,7 +150,7 @@ class Sieve:
         else:
             prime_array = cls.decode(prime_array)
 
-        while log <= cls.bytelog(limit, math.ceil):
+        while log < cls.bytelog(limit, math.ceil):
             prime_array.append([x for x in range(1 << (log << 3) + 1, limit, 2) if sieve[x]])
             log += 1
         return prime_array
@@ -160,9 +164,9 @@ class Sieve:
     @staticmethod
     def bytelog(x: int, func: callable=None):
         if func is None:
-            return math.log(x + 1, 256)
+            return math.log(x, 256)
         else:
-            return func(math.log(x + 1, 256))
+            return func(math.log(x, 256))
 
     @classmethod
     def _load(cls, log: int, data: bytes):
@@ -178,7 +182,7 @@ class Sieve:
     def encode_bool(cls, bool_array: (list, bool)) -> bytes:
         nbytes = cls.bytelog(len(bool_array), func=math.ceil)
         nbytes = 1 if nbytes == 0 else nbytes
-        bool_array = bool_array + [False] * ((nbytes << 3) - len(bool_array))
+        bool_array = bool_array + [True] * ((nbytes << 3) - len(bool_array))
         return bytes((sum((bool_array[(i << 3) + j] << j) for j in range(8)) for i in range(nbytes)))
 
     @classmethod
@@ -188,18 +192,15 @@ class Sieve:
     @staticmethod
     def encode(prime_array: (list, list)) -> (list, bytes):
         size = 1
-        maxn = 256
-        array = []
-        byte_array = [array]
-        for p in prime_array:
-            if p >= maxn:
-                size += 1
-                maxn <<= 8
-                array = []
-                byte_array.append(array)
-            for _ in range(size):
-                array.append(p % 0b1_0000_0000)
-                p >>= 8
+        byte_array = []
+        for log_array in prime_array:
+            array = []
+            for p in log_array:
+                for _ in range(size):
+                    array.append(p % 0b1_0000_0000)
+                    p >>= 8
+            byte_array.append(array)
+            size += 1
         return [bytes(array) for array in byte_array]
 
     @staticmethod
@@ -221,5 +222,5 @@ class Sieve:
         return prime_array        
             
 if __name__ == '__main__':
-    with Sieve(256) as sieve:
+    with Sieve(10_000) as sieve:
         print(sieve)
