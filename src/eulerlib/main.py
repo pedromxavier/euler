@@ -2,7 +2,7 @@
 import math
 import time
 from functools import wraps, reduce
-from collections import defaultdict
+from collections import defaultdict, deque
 from itertools import combinations
 
 ## Third-party
@@ -17,13 +17,29 @@ ONE_MILLION = 1_000_000
 TEN_MILLION = 10_000_000
 PHI = (1 + math.sqrt(5)) / 2
 
-def digits(n: int):
-    k = 0
-    n = abs(n)
-    while n > 0:
-        n //= 10
-        k += 1
-    return max(k, 1)
+def iterdiv(a: int, b: int):
+    k = 1
+    q, r = divmod(a, b)
+    yield (q, r)
+    while r != 0:
+        r *= pow(10, k)
+        q, r = divmod(r, b)
+        yield(q, r)
+
+def ndigits(n: int):
+    return math.floor(math.log10(max(abs(n), 1.0))) + 1
+
+def ranger(*args, f=None):
+    if f is None:
+        if len(args) == 1:
+            return [(i,) for i in range(args[0])]
+        else:
+            return [(i, *J) for i in range(args[-1]) for J in ranger(*args[:-1])]
+    else:
+        if len(args) == 1:
+            return [(i,) for i in range(args[0]) if f(i)]
+        else:
+            return [(i, *J) for i in range(args[-1]) for J in ranger(*args[:-1], f=f) if f(i, *J)]
 
 def fib(n: int):
     i, j = 0, 1
@@ -74,21 +90,37 @@ def ndivisors(n, primes=None) -> int:
 def proper_divisors(n) -> list:
     return [1] + [i for i in range(2, n // 2 + 1) if not n % i ]
 
-def divisors(n) -> list:
+def divisors(n: int) -> list:
     return proper_divisors(n) + [n]
 
-def is_prime(n, sieve=None):
+def digits(n: int) -> tuple:
+    stack = []
+    while n:
+        n, d = divmod(n, 10)
+        stack.append(d)
+    else:
+        return tuple(reversed(stack))
+
+def matrix(m: int, n: int, f:callable=None):
+    if f is None: f = lambda i, j: None
+    return [[f(i,j) for j in range(n)] for i in range(m)]
+
+def is_prime(n: int, sieve: Sieve=None):
     """
     """
-    if sieve is None or sieve.primes[-1] < n // 2:
-        sieve = Sieve(n // 2)
-        for p in sieve:
-            if not n % p:
+    if n <= 1:
+        return False
+
+    if sieve is None:
+        if not n % 2 or not n % 3:
+            return False
+        for k in range(5, math.ceil(math.sqrt(n) + 1.0), 2):
+            if not n % k:
                 return False
         else:
             return True
     else:
-        return binary_search(sieve.primes, n) is not None
+        return sieve.is_prime(n)
 
 
 
@@ -103,6 +135,7 @@ def _new(n):
 def answer(callback: callable):
     @wraps(callback)
     def new_callback(*args, **kwargs):
+        print('Go Euler!')
         T = clock()
         ans = callback(*args, **kwargs)
         T = clock() - T

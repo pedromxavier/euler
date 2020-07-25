@@ -4,112 +4,131 @@ import pickle
 import warnings
 
 from collections import defaultdict
+from array import array
+
+## 10 seconds
 
 class Sieve:
 
-    LIMIT = 16777216
+    LIMIT = 16777216 #
+
+    FACTOR = (1.0 + math.sqrt(5)) / 2 # golden ratio
 
     @classmethod
     def get_primes(cls, limit: int):
-        return cls(limit).__get_primes()
+        return cls(limit).primes
 
     def __iter__(self):
-        return iter(self.primes)
+        i = 0
+        while True:
+            if i < len(self.primes):
+                yield self.primes[i]
+                i += 1
+            else:
+                self.grow(self.FACTOR)
 
     def __init__(self, limit: int):
         if not limit < self.LIMIT:
             warnings.warn('Very large sieves might take a (long) while. Press Ctrl+C/X to cancel operation.')
 
-        self.limit = limit
-        self.primes = []	
-        self.sieve = [False]*(self.limit+1)
+        self.start = 0
+        self.limit = max(1_000_000, limit)
 
-        self.update = False
+        self.primes = []
+        self.sieves = array('b', [0] * (self.limit + 1))
 
-    def flip(self, prime):
+        self.__run_sieve()
+
+    def flip(self, p: int):
         try:
-            self.sieve[prime] = not self.sieve[prime]
+            self.sieves[p] = not self.sieves[p]
         except KeyError:
             pass
 
-    def invalidate(self, prime):
+    def invalidate(self, p: int):
         try:
-            if self.sieve[prime]:
-                self.sieve[prime] = False
+            if self.sieves[p]:
+                self.sieves[p] = False
         except KeyError:
-            pass			
+            pass
 
-
-    def is_prime(self, prime):
+    def is_prime(self, p: int):
+        if p < self.limit:
+            return bool(self.sieves[p])
+        else:
+            self.grow(self.FACTOR)
+            return self.is_prime(p)
+    
+    def __contains__(self, p: int):
         try:
-            return self.sieve[prime]
+            return bool(self.sieves[p])
         except KeyError:
             return False
 
-    def __start(self, n: int):
-        if not n % 2:
-            return max(n - 1, 5)
-        else:
-            return max(n, 5)
-
     @classmethod
-    def pseudo_primes(self, start: int, stop: int) -> iter:
-        """ primes in 30 n ± 1, 30 n ± 7, 30 n ± 11, 30 n ± 13
+    def prange(self, start: int, stop: int) -> iter:
+        """ prime candidates in {2, 3, 6 n ± 1 : n = 1, 2, ... }
         """
-        for i in (2, 3, 5, 7, 11, 13):
-            if i < stop:
-                if i >= start:
-                    yield i
-            else:
-                return
-        j = 19
-        while True:
-            if j < stop:
-                if i >= start:
-                    yield j
-                j += 4
-            else:
-                return
-            if j < stop:
-                if i >= start:
-                    yield j
-                j += 2
-            else:
-                return
+        n = start // 6
 
-        
+        if n <= 0:
+            yield 2
+            yield 3
+            n = 1
 
+        k = 6 * n
 
-    def __run_sieve(self, start: int=0):			
+        while k - 1 <= stop:
+            if start <= k - 1 <= stop:
+                yield k - 1
+            if start <= k + 1 <= stop:
+                yield k + 1
+            k += 6
+
+    def grow(self, factor: float):
+        self.limit = int(self.limit * factor)
+        self.sieves.extend([0] * (self.limit + 1 - len(self.sieves)))
+        self.__run_sieve()
+
+    def __test(self, i, j):
+        # n = 4*i^2 + j^2
+        n = 4*i*i + j*j
+        if n <= self.limit and (n % 12 == 1 or n % 12 == 5):				
+            self.flip(n)
+
+        # n = 3*i^2 + j^2
+        n = 3*i*i + j*j
+        if n <= self.limit and n % 12 == 7:				
+            self.flip(n)				
+
+        # n = 3*i^2 - j^2
+        n = 3*i*i - j*j
+        if n <= self.limit and i > j and n % 12 == 11:					
+            self.flip(n)
+
+    def __run_sieve(self):			
         test_limit = math.ceil(math.sqrt(self.limit))
 
-        start = self.__start(start)
+        for i in range(self.start):
+            for j in range(self.start, test_limit):
+                self.__test(i, j)
 
-        for i in range(start - 5, test_limit):
-            for j in range(start - 5, test_limit):
-                # n = 4*i^2 + j^2
-                n = 4*i*i + j*j
-                if n <= self.limit and (n % 12 == 1 or n % 12 == 5):				
-                    self.flip(n)
+        for i in range(self.start, test_limit):
+            for j in range(test_limit):
+                self.__test(i, j)
 
-                # n = 3*i^2 + j^2
-                n = 3*i*i + j*j
-                if n <= self.limit and n % 12 == 7:				
-                    self.flip(n)				
-
-                # n = 3*i^2 - j^2
-                n = 3*i*i - j*j
-                if n <= self.limit and i > j and n % 12 == 11:					
-                    self.flip(n)				
-
-        for i in range(start, test_limit, 2):			
+        for i in self.prange(5, test_limit):			
             if self.is_prime(i):
                 k = i * i
-                for j in range(k, self.limit+1, k):
+                for j in range(k, self.limit + 1, k):
                     self.invalidate(j)
-                            
-    def __get_primes(self):
-        if not self.update:
-            self.__run_sieve()
-        
-        return [2, 3] + [x for x in range(5, len(self.sieve), 2) if self.is_prime(x)]
+
+        self.primes.extend([x for x in self.prange(len(self.primes), self.limit + 1) if i in self])
+        self.start = test_limit
+
+    def primes_until(self, n: int):
+        for p in self:
+            if p > n:
+                break
+            else:
+                yield p

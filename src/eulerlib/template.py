@@ -1,8 +1,8 @@
-TEMPLATE = """
-''' Project Euler {:03d}
+TEMPLATE = """''' Project Euler {:04d}
     ====================
 '''
 import eulerlib as lib
+import math
 
 N = 0
 

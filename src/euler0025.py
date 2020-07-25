@@ -10,7 +10,7 @@ DIGITS = 1_000
 def find(d: int):
     k = math.floor(math.log(math.sqrt(5), lib.PHI) + d * math.log(10, lib.PHI))
     i, j = lib.fib(k)
-    while lib.digits(i) >= 1_000:
+    while lib.ndigits(i) >= 1_000:
         i, j = j - i, i
         k -= 1
     return k + 1
