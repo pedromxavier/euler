@@ -3,7 +3,7 @@ import math
 import time
 from functools import wraps, reduce
 from collections import defaultdict, deque
-from itertools import combinations
+import itertools as it
 
 ## Third-party
 import numpy as np
@@ -55,6 +55,10 @@ def fat(n: int):
         n -= 1
     return p
 
+def load(fname: str):
+    with open(fname, 'r') as file:
+        return file.read()
+
 def argmin(x: list):
     return min(range(len(x)), key=lambda i: x[i] if x[i] is not None else INF)
 
@@ -69,6 +73,10 @@ def gcd(a, b):
         return a
     else:
         return gcd(b, a % b)
+
+def window(x: list, n: int):
+    for i in range(len(x) - n):
+        yield tuple(x[i:i+n])
 
 def factor(n, primes=None) -> dict:
     """
@@ -122,15 +130,29 @@ def is_prime(n: int, sieve: Sieve=None):
     else:
         return sieve.is_prime(n)
 
-
-
-    
+def pandigs(n: int):
+    return (sum(x * 10 ** i for i, x in enumerate(p)) for p in it.permutations(range(n, 0, -1), n))
 
 def _new(n):
     from .template import TEMPLATE
 
     with open(f'euler{str(n).zfill(4)}.py', 'w') as file:
         file.write(TEMPLATE.format(n))
+
+def nsqrt(n: int):
+    k = n // 2
+    while k * k > n:
+        k -= 1
+    while k * k < n:
+        k += 1
+    else:
+        if (k * k == n):
+            return k
+        else:
+            return None
+
+def is_square(n: int):
+    return nsqrt(n) is not None
 
 def answer(callback: callable):
     @wraps(callback)
