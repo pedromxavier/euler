@@ -118,6 +118,9 @@ def is_prime(n: int, sieve: Sieve=None):
     """
     if n <= 1:
         return False
+    
+    if n == 2 or n == 3:
+        return True
 
     if sieve is None:
         if not n % 2 or not n % 3:
@@ -140,16 +143,15 @@ def _new(n):
         file.write(TEMPLATE.format(n))
 
 def nsqrt(n: int):
-    k = n // 2
-    while k * k > n:
-        k -= 1
-    while k * k < n:
-        k += 1
+    k = int(round(math.sqrt(n)))
+
+    if k * k == n:
+        return k
     else:
-        if (k * k == n):
-            return k
-        else:
-            return None
+        return None
+
+def from_digits(digits: tuple):
+    return sum(x * pow(10, i) for i, x in enumerate(reversed(digits)))
 
 def is_square(n: int):
     return nsqrt(n) is not None

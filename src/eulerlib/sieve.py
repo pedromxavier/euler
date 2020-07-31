@@ -32,7 +32,7 @@ class Sieve:
             warnings.warn('Very large sieves might take a (long) while. Press Ctrl+C/X to cancel operation.')
 
         self.start = 0
-        self.limit = max(1_000_000, limit)
+        self.limit = max(1_000, limit)
 
         self.primes = []
         self.sieves = array('b', [0] * (self.limit + 1))
